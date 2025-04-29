@@ -1,0 +1,90 @@
+async function autoUnfollow() {
+    // --- Konfigurasi ---
+    // Atur jeda waktu (dalam milidetik) antar setiap proses unfollow.
+    // Nilai yang lebih tinggi (misal 5000ms = 5 detik) lebih aman tapi lambat.
+    // Jangan atur terlalu rendah (di bawah 1500ms) untuk mengurangi risiko.
+    const delayBetweenUnfollows = 2500; // Contoh: 2.5 detik
+
+    // Atur jeda waktu (dalam milidetik) untuk menunggu dialog konfirmasi muncul setelah klik tombol "Mengikuti".
+    const delayForConfirmationDialog = 1000; // Contoh: 1 detik
+    // --- Akhir Konfigurasi ---
+
+    console.log("Memulai skrip auto unfollow...");
+    console.warn("PERINGATAN: Penggunaan skrip ini berisiko dan dapat menyebabkan pembatasan atau penangguhan akun. Gunakan dengan hati-hati.");
+
+    // Selector untuk tombol "Mengikuti" utama (berdasarkan data-testid yang Anda berikan)
+    const followingButtonSelector = 'button[data-testid$="-unfollow"]';
+    // Selector untuk tombol konfirmasi "Setop Ikuti" di dalam dialog
+    const confirmButtonSelector = 'button[data-testid="confirmationSheetConfirm"]';
+
+    // Dapatkan semua tombol "Mengikuti" yang ada di halaman saat ini
+    const followingButtons = document.querySelectorAll(followingButtonSelector);
+
+    if (followingButtons.length === 0) {
+        console.log("Tidak ada tombol 'Mengikuti' yang ditemukan. Pastikan Anda berada di halaman 'Following' yang benar (misal: https://x.com/nama_pengguna/following) dan beberapa akun sudah termuat di layar. Anda mungkin perlu scroll ke bawah dan menjalankan ulang skrip.");
+        return;
+    }
+
+    console.log(`Ditemukan ${followingButtons.length} tombol 'Mengikuti'. Memulai proses unfollow dengan jeda ${delayBetweenUnfollows / 1000} detik antar akun...`);
+
+    let unfollowedCount = 0;
+    let skippedCount = 0;
+
+    for (let i = 0; i < followingButtons.length; i++) {
+        const button = followingButtons[i];
+        // Mencoba mendapatkan nama pengguna dari aria-label untuk logging yang lebih baik
+        const userLabel = button.getAttribute('aria-label') || `Tombol ke-${i + 1}`;
+
+        console.log(`(${i + 1}/${followingButtons.length}) Memproses: ${userLabel}`);
+
+        try {
+            // 1. Klik tombol "Mengikuti"
+            button.click();
+            console.log(`   - Klik tombol 'Mengikuti' untuk ${userLabel}.`);
+
+            // 2. Tunggu dialog konfirmasi muncul
+            console.log(`   - Menunggu ${delayForConfirmationDialog / 1000} detik untuk dialog konfirmasi...`);
+            await new Promise(resolve => setTimeout(resolve, delayForConfirmationDialog));
+
+            // 3. Cari tombol konfirmasi "Setop Ikuti"
+            const confirmButton = document.querySelector(confirmButtonSelector);
+
+            if (confirmButton) {
+                // 4. Klik tombol konfirmasi "Setop Ikuti"
+                confirmButton.click();
+                unfollowedCount++;
+                console.log(`   - BERHASIL: Klik konfirmasi 'Setop Ikuti' untuk ${userLabel}. Total unfollow: ${unfollowedCount}`);
+            } else {
+                skippedCount++;
+                console.warn(`   - GAGAL: Tombol konfirmasi 'Setop Ikuti' tidak ditemukan untuk ${userLabel}. Mungkin dialog tidak muncul atau struktur HTML berubah. Melewati akun ini.`);
+                // Opsional: Anda bisa mencoba mencari tombol "Batalkan" dan mengkliknya jika perlu
+                // const cancelButton = document.querySelector('button[data-testid="confirmationSheetCancel"]');
+                // if (cancelButton) cancelButton.click();
+            }
+
+            // 5. Beri jeda sebelum memproses tombol berikutnya
+            if (i < followingButtons.length - 1) {
+                 console.log(`   - Menunggu ${delayBetweenUnfollows / 1000} detik sebelum lanjut ke akun berikutnya...`);
+                 await new Promise(resolve => setTimeout(resolve, delayBetweenUnfollows));
+            }
+
+        } catch (error) {
+            skippedCount++;
+            console.error(`   - ERROR saat memproses ${userLabel}:`, error);
+            console.log("   - Melanjutkan ke akun berikutnya setelah jeda...");
+             if (i < followingButtons.length - 1) {
+                 await new Promise(resolve => setTimeout(resolve, delayBetweenUnfollows));
+             }
+        }
+    }
+
+    console.log("=========================================");
+    console.log("Proses auto unfollow selesai.");
+    console.log(`- Berhasil unfollow: ${unfollowedCount} akun.`);
+    console.log(`- Dilewati/Gagal: ${skippedCount} akun.`);
+    console.log("Jika masih ada akun yang ingin di-unfollow, scroll ke bawah halaman untuk memuat lebih banyak, lalu jalankan ulang skrip ini.");
+    console.log("=========================================");
+}
+
+// Panggil fungsi untuk memulai proses
+autoUnfollow();
