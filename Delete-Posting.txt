@@ -1,0 +1,77 @@
+async function autoDeleteMyPosts() {
+  // Fungsi untuk memberikan jeda (delay) dalam milidetik
+  const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+  // Waktu jeda (dalam milidetik) - Sesuaikan jika perlu
+  const clickDelay = 1500; // Jeda setelah klik tombol 'More' dan menu 'Delete'
+  const confirmDelay = 1000; // Jeda setelah klik konfirmasi 'Delete'
+  const nextPostDelay = 3000; // Jeda sebelum memproses postingan berikutnya (lebih lama agar tidak terlalu cepat)
+
+  // Cari semua tombol 'More' (titik tiga) yang ada di dalam elemen postingan (artikel)
+  // Asumsi: Setiap postingan ada di dalam tag <article data-testid="tweet">
+  // Jika struktur berubah, selector ini mungkin perlu disesuaikan
+  const moreButtons = document.querySelectorAll('article[data-testid="tweet"] button[data-testid="caret"]');
+
+  console.log(`Menemukan ${moreButtons.length} tombol 'More' untuk diproses...`);
+  if (moreButtons.length === 0) {
+      console.log("Tidak ada tombol 'More' ditemukan. Pastikan postingan sudah dimuat di halaman atau selector masih valid.");
+      return;
+  }
+
+  for (let i = 0; i < moreButtons.length; i++) {
+    const button = moreButtons[i];
+    console.log(`\nMemproses postingan ke-${i + 1}...`);
+
+    // Gulir sedikit agar tombol terlihat (opsional, tapi bisa membantu)
+    button.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    await delay(500); // Tunggu sebentar setelah scroll
+
+    // 1. Klik tombol 'More' (titik tiga)
+    console.log("Klik tombol 'More'...");
+    button.click();
+    await delay(clickDelay);
+
+    // 2. Cari dan klik menu item 'Delete'
+    // Selector berdasarkan struktur HTML yang Anda berikan
+    let deleteMenuItem = Array.from(document.querySelectorAll('div[role="menuitem"]'))
+                             .find(el => el.textContent.trim() === 'Delete');
+
+    if (!deleteMenuItem) {
+      console.error("   -> Gagal menemukan menu item 'Delete'. Mungkin menu tidak muncul atau struktur HTML berubah. Melanjutkan ke postingan berikutnya.");
+      // Coba tutup menu jika ada (klik di luar area menu)
+      try { document.body.click(); } catch(e){}
+      await delay(500);
+      continue; // Lanjut ke postingan berikutnya
+    }
+
+    console.log("   -> Klik menu item 'Delete'...");
+    deleteMenuItem.click();
+    await delay(clickDelay);
+
+    // 3. Cari dan klik tombol konfirmasi 'Delete' di dialog
+    // Selector berdasarkan data-testid pada dialog konfirmasi
+    const confirmButton = document.querySelector('button[data-testid="confirmationSheetConfirm"]');
+
+    if (!confirmButton) {
+      console.error("   -> Gagal menemukan tombol konfirmasi 'Delete'. Mungkin dialog tidak muncul atau struktur HTML berubah. Melanjutkan ke postingan berikutnya.");
+       // Coba tutup dialog jika ada (klik cancel)
+       try {
+           const cancelButton = document.querySelector('button[data-testid="confirmationSheetCancel"]');
+           if (cancelButton) cancelButton.click();
+       } catch(e) {}
+      await delay(500);
+      continue; // Lanjut ke postingan berikutnya
+    }
+
+    console.log("   -> Klik tombol konfirmasi 'Delete'...");
+    confirmButton.click();
+    console.log("   -> Perintah hapus terkirim. Menunggu sebelum lanjut...");
+    await delay(nextPostDelay); // Tunggu sebelum lanjut ke postingan berikutnya
+  }
+
+  console.log("\nSelesai memproses semua postingan yang ditemukan di halaman saat ini.");
+  alert(`Proses selesai untuk ${moreButtons.length} postingan yang ditemukan. Gulir ke bawah dan jalankan skrip lagi jika masih ada postingan lain.`);
+}
+
+// Panggil fungsi untuk memulai proses
+autoDeleteMyPosts();
